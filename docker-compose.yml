@@ -1,0 +1,43 @@
+# Stack local: PostgreSQL 16 + LocalStack (SQS).
+#
+# As portas sao configuraveis via .env porque esta maquina ja tem outra stack
+# rodando em 5432/4566. Numa maquina limpa os defaults (5432/4566) funcionam.
+name: wagering-processor
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jungle
+      POSTGRES_PASSWORD: jungle_password
+      POSTGRES_DB: wagering_db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jungle -d wagering_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - wagering-pgdata:/var/lib/postgresql/data
+
+  localstack:
+    image: localstack/localstack:3.0
+    restart: unless-stopped
+    environment:
+      SERVICES: sqs
+      EDGE_PORT: 4566
+      AWS_DEFAULT_REGION: us-east-1
+      PERSISTENCE: 0
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  wagering-pgdata:
